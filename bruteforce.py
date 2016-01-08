@@ -6,93 +6,74 @@ import time
 import os
 
 
-def show_prompt():
+def show_main_menu():
     while True:
-        command = raw_input("\nbrute-force> ")
-        arguments = command.split()
-        if command.lower() == "quit":
+        menu_selections = ("\n1: Encrypt Passwords", "2: Decrypt Hashes", "3: Quit Program")
+        for menu_selection in menu_selections:
+            print(menu_selection)
+        selection = raw_input("\nSelect a menu option: ")
+        if not selection.isdigit():
+            print("- selection not a number")
+        elif int(selection) == 1:
+            encrypt()
+        elif int(selection) == 2:
+            decrypt()
+        elif int(selection) == 3:
             break
-        elif command.lower() == "help":
-            show_help()
-        elif len(arguments) != 3:
-            print("- command not recognized")
-            print("- use command 'help' for information on available commands")
-        elif arguments[0].lower() == "encrypt":
-            if not error_check(arguments):
-                encrypt(arguments)
-        elif arguments[0].lower() == "decrypt":
-            if not error_check(arguments):
-                decrypt(arguments)
         else:
-            print("- command not recognized")
-            print("- use command 'help' for information on available commands")
+            print("- selection not available")
 
 
-def show_help():
-    print("\nCOMMANDS\t\tDESCRIPTIONS")
-    print("encrypt -[hash] [file]\tencrypts words entered by user with selected hash to selected file")
-    print("\t\t\tEXAMPLE: encrypt -md5 hashes.txt\n")
-    print("decrypt -[hash] [file]\tdecrypts hashes provided by user with selected hash from selected file")
-    print("\t\t\tEXAMPLE: decrypt -sha256 hashes.txt\n")
-    print("help\t\t\tshows information on available commands\n")
-    print("quit\t\t\texits out of the program\n\n")
-    print("HASHES")
-    print("md5\t\tsha1\t\tsha224")
-    print("sha256\t\tsha384\t\tsha512")
+def show_hash_menu(action):
+    while True:
+        hash_functions = ("\n1: MD5", "2: SHA-1", "3: SHA-224", "4: SHA-256", "5: SHA-384", "6: SHA-512", "7: Go Back")
+        for hash_function in hash_functions:
+            print(hash_function)
+        selection = raw_input("\nSelect a hash function to " + action + " them with: ")
+        if not selection.isdigit():
+            print("- selection not a number")
+        elif 1 <= int(selection) <= 6:
+            index = int(selection) - 1
+            hash_function = hash_functions[index]
+            hash_function = hash_function.split()
+            return hash_function[1]
+        elif int(selection) == 7:
+            return None
+        else:
+            print("- selection not available")
 
 
-def error_check(arguments):
-    if hash_check(arguments[1]):
-        return True
-    if file_check(arguments[2]):
-        return True
-    return False
-
-
-def hash_check(argument):
-    hashes = ("-md5", "-sha1", "-sha224", "-sha256", "-sha384", "-sha512")
-    if argument.lower() not in hashes:
-        print("- hash not recognized")
-        print("- use command 'help' for information on available hashes")
-        return True
-    return False
-
-
-def file_check(argument):
-    try:
-        if not os.path.isfile(argument):
-            open(argument, "a").close()
-            os.unlink(argument)
-    except OSError:
-        print("- file not recognized")
-        print("- use file with .txt extension")
-        return True
-    return False
-
-
-def encrypt(arguments):
-    if os.path.isfile(arguments[2]):
-        overwrite = raw_input("\n" + arguments[2] + " already exists, would you like to overwrite it [yes/no]: ")
-        if overwrite.lower() not in ("yes", "y"):
-            return
-    passwords = raw_input("\nEnter a list of passwords separated by commas below:\n")
+def encrypt():
+    passwords = raw_input("\nEnter a list of passwords separated by commas:\n")
     passwords = passwords.split()
     passwords = "".join(passwords)
     passwords = passwords.split(",")
-    document = open(arguments[2], "w")
+    hash_function = show_hash_menu("encrypt")
+    if hash_function is None:
+        return
+    file_name = raw_input("\nEnter the name of the file to write them to: ")
+    if os.path.isfile(file_name):
+        overwrite = raw_input("\n" + file_name + " already exists, would you like to overwrite it (yes/no): ")
+        if overwrite.lower() not in ("yes", "y"):
+            return
+    document = open(file_name, "w")
     for password in passwords:
-        document.write(compute_hash(arguments[1], password) + "\n")
+        document.write(compute_hash(hash_function, password) + "\n")
     document.flush()
     document.close()
-    print("\nAll passwords were encrypted with " + arguments[1][1:].upper() + " and written to " + arguments[2])
+    print("\nAll passwords were encrypted with " + hash_function + " and written to " + file_name)
 
 
-def decrypt(arguments):
-    if not os.path.isfile(arguments[2]):
-        print("\n" + arguments[2] + " does not exist in the current working directory")
+def decrypt():
+    hash_function = show_hash_menu("decrypt")
+    if hash_function is None:
+        return
+    file_name = raw_input("\nEnter the name of the file to read them from: ")
+    if not os.path.isfile(file_name):
+        print("\n" + file_name + " does not exist in the current working directory")
         return
     hashes = []
-    document = open(arguments[2], "r")
+    document = open(file_name, "r")
     for line in document:
         if line.endswith("\n"):
             line = line[:-1]
@@ -102,7 +83,7 @@ def decrypt(arguments):
     for length in range(1, 10):
         for character in itertools.product(characters, repeat=length):
             text = "".join(character)
-            computed_hash = compute_hash(arguments[1], text)
+            computed_hash = compute_hash(hash_function, text)
             if computed_hash in hashes:
                 print("\nPassword: " + text)
                 print("Hash: " + computed_hash)
@@ -112,21 +93,21 @@ def decrypt(arguments):
                 break
         if len(hashes) == 0:
             break
-    print("\nAll hashes from " + arguments[2] + " were decrypted with " + arguments[1][1:].upper())
+    print("\nAll hashes from " + file_name + " were decrypted with " + hash_function)
 
 
 def compute_hash(hash_function, text):
-    if hash_function == "-md5":
+    if hash_function == "MD5":
         return hashlib.md5(text).hexdigest()
-    elif hash_function == "-sha1":
+    elif hash_function == "SHA-1":
         return hashlib.sha1(text).hexdigest()
-    elif hash_function == "-sha224":
+    elif hash_function == "SHA-224":
         return hashlib.sha224(text).hexdigest()
-    elif hash_function == "-sha256":
+    elif hash_function == "SHA-256":
         return hashlib.sha256(text).hexdigest()
-    elif hash_function == "-sha384":
+    elif hash_function == "SHA-384":
         return hashlib.sha384(text).hexdigest()
-    elif hash_function == "-sha512":
+    elif hash_function == "SHA-512":
         return hashlib.sha512(text).hexdigest()
     else:
         return "incomplete hash"
@@ -140,7 +121,7 @@ def compute_duration(seconds):
 
 
 def main():
-    show_prompt()
+    show_main_menu()
 
 
 if __name__ == "__main__":
