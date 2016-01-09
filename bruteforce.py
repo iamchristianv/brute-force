@@ -32,7 +32,10 @@ def show_hash_menu(action, hashes=None):
             print(hash_function)
         if hashes is not None:
             key = str(len(hashes[0]))
-            print("Recommendation: " + lengths[key])
+            if key in lengths:
+                print("Recommendation: " + lengths[key])
+            else:
+                print("No Recommendation")
         selection = raw_input("\nSelect a hash function to " + action + " with: ")
         if not selection.isdigit():
             print("- selection not a number")
